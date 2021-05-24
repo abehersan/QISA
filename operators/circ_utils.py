@@ -118,3 +118,30 @@ def tunable_srambling_U_transpose(circ, alpha):
     circ.barrier(qubit_inums)
     for i in qubit_inums:
         circ.rz(theta,i)                 # rz +theta all
+        
+
+########################################################################
+# RESULT ANALYSIS TOOLS
+########################################################################
+
+# funcs to get distribution of numbers of exited states in measurement result
+
+def get_num_of_exited_states(resstring):
+    return sum([int(x) for x in resstring])
+
+def get_exited_state_dist(result, num_qubits):
+    
+    counts = dict(zip(
+        [x[:num_qubits] for x in result.get_counts().keys()], 
+        [x for x in result.get_counts().values()]
+    ))
+
+    cd = {}
+    for k,v in counts.items():
+        cd[k] = [get_num_of_exited_states(k),v]   
+
+    exi_counts = dict(zip([x for x in range(num_qubits)], [0 for x in range(num_qubits)]))
+    for i in range(num_qubits):
+        exi_counts[i] = sum([x[1] for x in cd.values() if x[0]==i])
+        
+    return exi_counts
