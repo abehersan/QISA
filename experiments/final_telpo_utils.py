@@ -17,19 +17,11 @@ def get_bell_pairs(qnum):
 
 # func to get 2-qubit-gate pairs for scrambling operation applied to n qubit circuit, args = number of qubits (int)
 def get_unitary_pairs(qnum):  
-    
     upper_qs = [x for x in range(qnum-1)][:int(qnum/2)]
     lower_qs = [x for x in range(qnum-1)][int(qnum/2):]  
-    
-    upper_pairs = [(max(upper_qs), min(upper_qs))] + sorted([(upper_qs[i],upper_qs[i+1]) 
-                   for i in range(len(upper_qs)-1)] + [(upper_qs[i],upper_qs[i+2]) 
-                                                       for i in range(len(upper_qs)-2)])
-    
-    lower_pairs = sorted([(lower_qs[i],lower_qs[i+1]) 
-                   for i in range(len(lower_qs)-1)] + [(lower_qs[i],lower_qs[i+2]) 
-                                                       for i in range(len(lower_qs)-2)])
+    upper_pairs = [(max(upper_qs), min(upper_qs))] + sorted([(upper_qs[i], upper_qs[i+1]) for i in range(len(upper_qs)-1)])
+    lower_pairs = sorted([(lower_qs[i],lower_qs[i+1]) for i in range(len(lower_qs)-1)])                         
     lower_pairs = [(min(lower_qs),max(lower_qs))] + [x for x in reversed(lower_pairs)] 
-
     return upper_pairs, lower_pairs
 
 # func to get dict with all lists plus reversed lists for qubit inum pairings, one-q-gates and two-q-gates
