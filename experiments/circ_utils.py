@@ -61,6 +61,7 @@ def get_unitary_pairs(circ):
     lower_pairs = [x for x in reversed(lower_pairs)]  
     return upper_pairs, lower_pairs
 
+# func to apply grover search gates to qubit pair (as a list)
 def apply_grover(circ,pair):
     from numpy import pi
     circ.rz(pi,pair[0])
@@ -68,6 +69,12 @@ def apply_grover(circ,pair):
     circ.rx(pi,pair[1])
     circ.swap(pair[0],pair[1])
     circ.rz(pi,pair[0])
+
+# func to apply classical bob gates after base measurement of bell pair   
+def apply_bob_gates(circ,ibob,measpair):
+    measpair = sorted(measpair)
+    circ.cz(measpair[0],ibob)
+    circ.cx(measpair[1],ibob)
     
 ########################################################################
 # TUNABLE SCRAMBLING CIRCS
@@ -145,3 +152,67 @@ def get_exited_state_dist(result, num_qubits):
         exi_counts[i] = sum([x[1] for x in cd.values() if x[0]==i])
         
     return exi_counts
+    
+    
+########################################################################
+########################################################################
+
+def get_7q_circ_to_test_scrambling(gate_id):
+    
+    from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
+    from numpy import pi  
+    
+    gate_ids = ["CZ_H"]
+    
+    if gate_id not in gate_ids:
+        print("Gate Id unknown. Please choose one of the following:",gate_ids)
+
+    qreg_q = QuantumRegister(7, 'q')
+    creg_c = ClassicalRegister(7, 'c')
+    circuit = QuantumCircuit(qreg_q, creg_c)
+
+    circuit.x(qreg_q[0])
+    circuit.h(qreg_q[1])
+    circuit.h(qreg_q[2])
+    circuit.h(qreg_q[5])
+    circuit.cx(qreg_q[2], qreg_q[3])
+    circuit.cx(qreg_q[5], qreg_q[6])
+    circuit.cx(qreg_q[1], qreg_q[4])
+    circuit.barrier(qreg_q[2], qreg_q[0], qreg_q[1], qreg_q[3], qreg_q[4], qreg_q[5])   
+        
+    if gate_id == "CZ_H":
+        
+        circuit.cz(qreg_q[2], qreg_q[0])
+        circuit.cz(qreg_q[3], qreg_q[5])
+        circuit.cz(qreg_q[1], qreg_q[0])
+        circuit.cz(qreg_q[4], qreg_q[5])
+        circuit.cz(qreg_q[2], qreg_q[1])
+        circuit.cz(qreg_q[3], qreg_q[4])
+        circuit.barrier(qreg_q[2], qreg_q[0], qreg_q[1], qreg_q[3], qreg_q[4], qreg_q[5])
+        circuit.h(qreg_q[0])
+        circuit.h(qreg_q[1])
+        circuit.h(qreg_q[2])
+        circuit.h(qreg_q[3])
+        circuit.h(qreg_q[4])
+        circuit.h(qreg_q[5])
+        circuit.cz(qreg_q[2], qreg_q[0])
+        circuit.cz(qreg_q[3], qreg_q[5])
+        circuit.cz(qreg_q[2], qreg_q[1])
+        circuit.cz(qreg_q[3], qreg_q[4])
+        circuit.cz(qreg_q[1], qreg_q[0])
+        circuit.cz(qreg_q[4], qreg_q[5])
+    
+    circuit.barrier(qreg_q[2], qreg_q[0], qreg_q[1], qreg_q[3], qreg_q[4], qreg_q[5])
+    circuit.cx(qreg_q[2], qreg_q[3])
+    circuit.h(qreg_q[2])
+    circuit.cx(qreg_q[3], qreg_q[6])
+    circuit.cz(qreg_q[2], qreg_q[6])
+    circuit.measure(qreg_q[6], creg_c[6])
+    circuit.measure(qreg_q[5], creg_c[5])
+    circuit.measure(qreg_q[4], creg_c[4])
+    circuit.measure(qreg_q[3], creg_c[3])
+    circuit.measure(qreg_q[2], creg_c[2])
+    circuit.measure(qreg_q[1], creg_c[1])
+    circuit.measure(qreg_q[0], creg_c[0])
+    
+    return circuit
