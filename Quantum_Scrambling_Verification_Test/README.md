@@ -9,7 +9,7 @@ Reference: [Verified quantum information scrambling [arXiv:1806.02807]](https://
 
 Verify scrambling in terms of many-body teleportation fidelity.
 
-![Wormhole](.\\pics\\wormhole.jpg)
+![Wormhole](.\\pics\\wormhole.png)
 
 ## IMPLEMENTATION
 
