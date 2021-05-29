@@ -1,5 +1,5 @@
 ################################################################################
-# structuring funcs
+# GENERAL STRUCTURING FUNCS:
 ################################################################################
 
 # func to get qubit inums of upper and lower half of the circ 
@@ -69,7 +69,7 @@ def get_all_gatesets_and_pairing_lists(n, one_q_gates, two_q_gates):
     return lsd
 
 ################################################################################
-# circuit operation funcs
+# GENERAL CIRCUIT OPERATION FUNCS:
 ################################################################################
 
 # funcs for bell pair entanglement, args: circuit, nested list of qubit inums
@@ -90,7 +90,7 @@ def apply_bob_gates(circ,ibob,measpair):
     circ.cx(measpair[1],ibob)
     
 ################################################################################
-# funcs for general telpo protocol to test scrambling properties
+# FOR SCRAMBLING VERIFICATION TESTS:
 ################################################################################
 
 # func to apply method "gateset" to circ, args: circ and initial lists with gates
@@ -128,8 +128,34 @@ def apply_gate_set_test(circ, two_q_gates, one_q_gates):
     # apply two qubit gates for reversed pairs in second half of circ
     for i in range(len(rev_sec_2gate_pairs)):
         circ.append(rev_two_q_gates[i],rev_sec_2gate_pairs[i])
-        
-        
-def apply_unitary_test(circ, unitary):
-    print("unitary method coming soon")
-    print('\n\tsorry, not implemented yet')
+    
+################################################################################
+# TO DO!
+################################################################################
+
+def apply_operators(circ, operatorlist):
+            
+    # get n (unitary size) from qubit num
+    qnum = len(circ.qubits)
+    
+    # inums of upper and lower half qubits
+    fst_half, sec_half = fst_n_sec_half_nums(qnum)
+    
+    for op in operatorlist:
+        circ.append(op, fst_half)
+        circ.append(op.transpose(), sec_half)
+     
+    
+################################################################################
+# TUNABLE SCRAMBLING CIRCUIT:
+################################################################################
+
+# func to return theta angle from parameter alpha
+def get_theta_from_alpha(alpha):
+    from numpy import pi
+    return (alpha*pi)/2
+
+# apply tunable scrambling protocol for a teleporation fidelity value alpha
+#def apply_tunable_scrambling(circ, alpha):
+    
+    
