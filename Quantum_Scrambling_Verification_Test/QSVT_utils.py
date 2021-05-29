@@ -133,10 +133,18 @@ def apply_gate_set_test(circ, two_q_gates, one_q_gates):
 # TO DO!
 ################################################################################
 
-def apply_unitary_test(circ, unitary):
-    print("unitary method coming soon")
-    print('\n\tsorry, not implemented yet')
+def apply_operators(circ, operatorlist):
+            
+    # get n (unitary size) from qubit num
+    qnum = len(circ.qubits)
     
+    # inums of upper and lower half qubits
+    fst_half, sec_half = fst_n_sec_half_nums(qnum)
+    
+    for op in operatorlist:
+        circ.append(op, fst_half)
+        circ.append(op.transpose(), sec_half)
+     
     
 ################################################################################
 # TUNABLE SCRAMBLING CIRCUIT:
