@@ -90,7 +90,7 @@ def apply_bob_gates(circ,ibob,measpair):
     circ.cx(measpair[1],ibob)
     
 ################################################################################
-# FOR SCRAMBLING VERIFICATION TESTS:
+# FOR SCRAMBLING VERIFICATION TESTS: GATESET METHOD
 ################################################################################
 
 # func to apply method "gateset" to circ, args: circ and initial lists with gates
@@ -130,7 +130,7 @@ def apply_gate_set_test(circ, two_q_gates, one_q_gates):
         circ.append(rev_two_q_gates[i],rev_sec_2gate_pairs[i])
     
 ################################################################################
-# TO DO!
+# FOR SCRAMBLING VERIFICATION TESTS: OPERATOR METHOD
 ################################################################################
 
 def apply_operators(circ, operatorlist):
@@ -147,7 +147,7 @@ def apply_operators(circ, operatorlist):
      
     
 ################################################################################
-# TUNABLE SCRAMBLING CIRCUIT:
+# TUNABLE SCRAMBLING TOOLS: GENERAL
 ################################################################################
 
 # func to return theta angle from parameter alpha
@@ -155,7 +155,174 @@ def get_theta_from_alpha(alpha):
     from numpy import pi
     return (alpha*pi)/2
 
-# apply tunable scrambling protocol for a teleporation fidelity value alpha
-#def apply_tunable_scrambling(circ, alpha):
+    
+################################################################################
+# TUNABLE SCRAMBLING TOOLS: PULSE SCHEDULES
+################################################################################
+
+from qiskit import pulse, schedule
+import numpy as np
+from numpy import pi
+
+# get control channel and cross resonance pulse implemented in CX basis gate
+# for two qubit index nums and backend
+from qiskit.pulse import *
+from qiskit.pulse.library import *
+
+def get_CRs(q1,q2,backend):
+    inst_sched_map = backend.defaults().instruction_schedule_map 
+    cx = inst_sched_map.get('cx', qubits=[q1,q2])        
+    idx = 0
+    while (type(cx.instructions[idx][1].channels[0]) is not ControlChannel) or \
+        (type(cx.instructions[idx][1]) is not Play):
+        idx += 1
+    return (cx.instructions[idx][1].channels[0], cx.instructions[idx][1].pulse)
+
+################################################################################
+
+# The functions "get_direct_rx_sched" and "get_CR_theta_sched" are based on: 
+# 'Optimized Quantum Compilation for Near-Term Algorithms with OpenPulse' arXiv:2004.11205
+# Source code: https://github.com/singular-value/optimizations_via_openpulse
+from pulse_compiler_helper_fns import *
+
+# func to get pulse for single qubit rotation RX(theta)
+def get_direct_rx_sched(theta, qubit_index, backend):
+    '''
+    args: 
+            theta (angle, float),
+            qubit_index (qubit index numbers, int),
+            backend
+            
+    returns: pulse schedule        
+    '''
+    circ_inst_map = backend.defaults().instruction_schedule_map 
+    
+    x_instructions = circ_inst_map.get('x', qubits=[qubit_index]).instructions
+    
+    assert len(x_instructions) == 1
+    
+    x_samples = x_instructions[0][1].pulse.get_waveform().samples
+    
+    area_under_curve = sum(map(np.real, x_samples))
+    
+    if theta > np.pi:
+        theta -= 2 * np.pi
+    
+    direct_rx_samples = rescale_samples(x_samples, (theta / np.pi))
+    direct_rx_samplepulse = Waveform(direct_rx_samples).samples
+    direct_rx_command = Play(Waveform(direct_rx_samplepulse),(backend.configuration().drive(qubit_index)))
+    
+    return Schedule([0, direct_rx_command])
+
+# func to get pulse for two qubit cross resonance pulse CR(theta)
+def get_CR_theta_sched(theta,control,target,backend):
+    '''
+    args: 
+            theta (angle, float),
+            control,target (qubit index numbers, int),
+            backend
+            
+    returns: pulse schedule        
+    '''
+    inst_sched_map = backend.defaults().instruction_schedule_map 
+    cx_instructions = inst_sched_map.get('cx', qubits=[control, target]).instructions
+    xc_instructions = inst_sched_map.get('cx', qubits=[target, control]).instructions
+
+    cr_uchan, cr_pulse = get_CRs(control,target,backend)
+
+    inst_sched_map = backend.defaults().instruction_schedule_map 
+    cx_instructions = inst_sched_map.get('cx', qubits=[control, target]).instructions
+    xc_instructions = inst_sched_map.get('cx', qubits=[target, control]).instructions
+
+    cr_control_inst = [(y.pulse,y.channel) for (x,y) in cx_instructions if type(y.channel)==ControlChannel and type(y)==Play]
+
+    cr_drive_inst = [(y.pulse,y.channel) for (x,y) in cx_instructions if type(y.channel)==DriveChannel and type(y)==Play and type(y.pulse)==GaussianSquare]
+
+    cr_control_inst = cr_control_inst[0]  # driving of control qubit at target's frequency
+    cr_drive_inst = cr_drive_inst[0] # active cancellation tone
+
+    flip = False
+
+    if theta < 0:
+        flip = True
+        theta = -1 * theta
+
+    if theta > 2 * np.pi:
+        theta -= 2 * np.pi
+
+    cr_uchan, cr_pulse = get_CRs(control,target,backend)
+
+    full_area_under_curve = sum(map(np.real, cr_pulse.get_waveform().samples))
+    target_area_under_curve = full_area_under_curve * (theta / (np.pi / 2))
+
+    # CR pulse samples have gaussian rise, flattop, and then gaussian fall.
+    # we want to find the start and end indices of the flattop
+    flat_start = 0
+    while cr_pulse.get_waveform().samples[flat_start] != cr_pulse.get_waveform().samples[flat_start + 1]:
+        flat_start += 1
+    assert cr_pulse.get_waveform().samples[flat_start] == cr_pulse.get_waveform().samples[flat_start + 1]
+
+    flat_end = flat_start + 1
+    while cr_pulse.get_waveform().samples[flat_end] == cr_pulse.get_waveform().samples[flat_end + 1]:
+        flat_end += 1
+    assert cr_pulse.get_waveform().samples[flat_end] == cr_pulse.get_waveform().samples[flat_end - 1]
+
+    area_under_curve = sum(map(np.real, cr_pulse.get_waveform().samples[:flat_start]))
+    area_under_curve += sum(map(np.real, cr_pulse.get_waveform().samples[flat_end+1:]))
+    flat_duration = (target_area_under_curve - area_under_curve) / np.real(cr_pulse.get_waveform().samples[flat_start])
+    flat_duration = max(0, int(flat_duration + 0.5))
+    duration = len(cr_pulse.get_waveform().samples[:flat_start]) + flat_duration + len(cr_pulse.get_waveform().samples[flat_end+1:])
+    if duration % 16 <= 8 and flat_duration > 8:
+        flat_duration -= duration % 16
+    else:
+        flat_duration += 16 - (duration % 16)
+
+    cr_drive_samples = np.concatenate([
+        cr_pulse.get_waveform().samples[:flat_start],
+        [cr_pulse.get_waveform().samples[flat_start]] * flat_duration,
+        cr_pulse.get_waveform().samples[flat_end+1:]
+    ])
+
+    cr_control_samples = np.concatenate([
+        cr_pulse.get_waveform().samples[:flat_start],
+        [cr_pulse.get_waveform().samples[flat_start]] * flat_duration,
+        cr_pulse.get_waveform().samples[flat_end+1:]
+    ])
+
+    assert len(cr_drive_samples) % 16 == 0
+    assert len(cr_control_samples) % 16 == 0
+
+    current_area_under_curve = sum(map(np.real, cr_control_samples))
+    scaling_factor = target_area_under_curve / current_area_under_curve
+
+    cr_drive_samples *= scaling_factor
+    cr_control_samples *= scaling_factor
+
+    cr_p_schedule = Play(Waveform(cr_drive_samples), cr_drive_inst[1]) | Play(Waveform(cr_control_samples),cr_control_inst[1])
+    cr_m_schedule = Play(Waveform(-1*cr_drive_samples),cr_drive_inst[1]) | Play(Waveform(-1*cr_control_samples),cr_control_inst[1])
+
+    if flip:
+        schedule = cr_m_schedule
+        schedule |= inst_sched_map.get('x', qubits=[control]) << schedule.duration
+        schedule |= cr_p_schedule << schedule.duration
+    else:
+        schedule = cr_p_schedule
+        schedule |= inst_sched_map.get('x', qubits=[control]) << schedule.duration
+        schedule |= cr_m_schedule << schedule.duration
+        
+    return schedule
+
+################################################################################
+
+# get dict with control channels and cr pulses for all coupled pairs   
+def get_CR_dict(theta, backend):
+    crdict = dict(zip([tuple(pair) for pair in backend.configuration().coupling_map],
+                      [get_CR_theta_sched(theta,pair[0],pair[1],backend) for pair in backend.configuration().coupling_map]))
+    return crdict
+    
+################################################################################
+################################################################################
+
+    
     
     
