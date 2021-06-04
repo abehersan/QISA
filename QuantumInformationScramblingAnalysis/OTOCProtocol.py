@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # --- Example implementation ---
 
     # Fire up the functions
-    butterflycircuit, score = ButterflyCircuit(5,1,3, notRef=True)
+    # butterflycircuit, score = ButterflyCircuit(5,1,3, notRef=True)
 
     # Show the results
     # print(butterflycircuit)
