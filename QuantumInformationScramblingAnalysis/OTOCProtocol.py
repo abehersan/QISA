@@ -118,7 +118,7 @@ def avgOTOC(cyclesK, statRep, qubits, graph = True, absVal = True):
         # print(expvalPauliY)
     if absVal:
         expvalPauliY = np.absolute(expvalPauliY)
-    print(expvalPauliY.shape)
+    # print(expvalPauliY.shape)
     if graph:
         # Plotting the resulting 2D arrays
         # General themes
