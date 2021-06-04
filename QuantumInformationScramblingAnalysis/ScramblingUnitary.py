@@ -10,16 +10,16 @@ Programme function:
 """
 
 from math import pi
+from numpy.core.defchararray import startswith
 from qiskit import *
-from qiskit.circuit import gate, parameter
-import numpy as np
 from pybdm import BDM
-from qiskit.circuit.bit import Bit
 from qiskit.quantum_info.operators.operator import Operator
+import numpy as np
+import timeit
 
 # Quantum coin flip to determine random bit string 
-# TODO: see if QCF is "more random" than simple random array generation - it certainly isn't faster!
-def QuantumCoinFlip(flips):
+# SLOW quantum implementation, not better than just simple random numpy arrays
+""" def QuantumCoinFlip(flips):
     # Simulates a perfect coin
     q = QuantumRegister(1)
     c = ClassicalRegister(1)
@@ -28,6 +28,10 @@ def QuantumCoinFlip(flips):
     perfect_coin.measure(q,c)
     M_simulator = Aer.backends(name="qasm_simulator")[0]
     M = execute(perfect_coin, M_simulator, shots=flips, meas_return="single").result().get_counts(perfect_coin)
+    return M """
+
+def QuantumCoinFlip(flips):
+    M = np.random.randint(2, size=flips)
     return M
 
 # Generation of n*(6*k) entry matrix - random string which indicate which gate is performed
@@ -36,7 +40,8 @@ def RandomStrings(n, k):
     single_string = []
     for i in range(n):
         for j in range(k*6):    # every cycle contains 6 random cbits
-            if QuantumCoinFlip(1).get("0")!=None:
+            if QuantumCoinFlip(1)[0]!=0:
+            # if QuantumCoinFlip(1).get("0")!=None:
                 single_string.append(1)
             else:
                 single_string.append(0)
@@ -113,16 +118,19 @@ def ScramblingU(n, k, nearest=True, filters=True, printArray=False):
                 # If only nearest-neighbor interactions are on
                 if nearest:
                     if i < n-1:
-                        # ScramblingCircuit.iswap(i,i+1)
-                        ScramblingCircuit.rxx(pi/2, i,i+1)
+                        ScramblingCircuit.iswap(i,i+1)
+                        # ScramblingCircuit.rxx(pi/2, i,i+1)
                     else:
-                        # ScramblingCircuit.iswap(i,i-1)
-                        ScramblingCircuit.rxx(pi/2, i, i-1)
+                        ScramblingCircuit.iswap(i,i-1)
+                        # ScramblingCircuit.rxx(pi/2, i, i-1)
                 else:
-                    # TODO: find a better way to implement chaotic SYK model - more "controlled"
-                    # ScramblingCircuit.iswap(i,i-1)
-                    ScramblingCircuit.rxx(pi/2, i, i-1)
+                    tq_cq = np.random.randint(n,size=(2,1))
+                    while tq_cq[[0]]==tq_cq[[1]]:
+                        tq_cq = np.random.randint(n,size=(2,1))
+                    ScramblingCircuit.iswap(int(tq_cq[[0]]),int(tq_cq[[1]]))
+                    # ScramblingCircuit.rxx(pi/2, int(tq_cq[[0]]), int(tq_cq[[1]]))
         ScramblingCircuit.barrier()
+    # ScrUnitary = ScramblingCircuit.to_instruction()
     ScrUnitary = Operator(ScramblingCircuit.to_instruction())
     return ScrUnitary, BDMScore
 
@@ -151,31 +159,35 @@ if __name__ == "__main__":
 
     # ---Example implementation---
 
-    # Random scrambling unitary and BDM score
-    # NOTE: scrgate is of type Instruction, it can be then via Operator(*) be converted to a matrix-represented operator within qiskit
-    # Operator definition
-    scrOp, bdmscore = ScramblingU(5,2, nearest=False, filters=True, printArray=False)
-    udagg=Udagger(scrOp)
+    # - Timer starts - 
+    t_0 = timeit.default_timer()
 
-    # Verification to see if U dot U^dagger is 1
-    # print(np.allclose(np.dot(scrOp.data, udagg), np.eye(32)))
+    # Random scrambling unitary and BDM score
+    # Operator definition
+    scrOp, bdmscore = ScramblingU(5,2, nearest=False, filters=False, printArray=False)
+    udagg=Udagger(scrOp)
     
     # Verification to see if both operators are indeed unitary
-    print("Unitarity tests: \nU\t-\t{v1}\nUdagg\t-\t{v2}".format(v1=scrOp.is_unitary(), v2=udagg.is_unitary()))
+    # print("Unitarity tests: \nU\t-\t{v1}\nUdagg\t-\t{v2}".format(v1=scrOp.is_unitary(), v2=udagg.is_unitary()))
     
     # Circuit and register
-    qr = QuantumRegister(5, 'q')
-    circ = QuantumCircuit(qr)
+    qr1 = QuantumRegister(5, 'q')
+    circ1 = QuantumCircuit(qr1)
 
     # U some x gates and then Udagg; for example
-    circ.append(scrOp, [qr[i] for i in range(5)])
-    circ.x([qr[i] for i in range(3)])
-    circ.append(udagg, [qr[i] for i in range(5)])
+    circ1.append(scrOp, [qr1[i] for i in range(5)])
+    circ1.x([qr1[i] for i in range(3)])
+    circ1.append(udagg, [qr1[i] for i in range(5)])
     
+    print("A part of the circuit used to determine the time dependence of the OTOC is as follows:\n")
     # Print circuits or decomposed version as individual gate instructions
-    print(circ)
-    # dec_circ = circ.decompose()
-    # print(dec_circ)
+    print(circ1)
+    print("We're effectively computing UOU^dagger, which is the time evolution under the scrambling unitary in the Heisenberg picture.\n")
 
+    print("Each randomly generated unitary has a distinct tag which allows us to distinguish it from the rest, that tag comes in form of its BDM score.\n")
     # Randomness measure
     print("BDM for SU: {v1}\n".format(v1=bdmscore))
+
+    # - Time checkpoint - 
+    t_1 = timeit.default_timer() - t_0
+    print("Exec time: {}sec".format(t_1))
