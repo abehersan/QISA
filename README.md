@@ -14,9 +14,9 @@ In the second stage, after having verified these dynamics, we aim to further pro
 
 Two key figures of merit will be described; one being **scrambling unitaries** and the other **the dlock decomposition method metric**. The former is the main culprit for any information scrambling signature and the former allows us to better categorize randomly-generated scrambling unitaries. 
 
-## We recommend you follow the Demos show in the __Quantum_Scrambling_Verification_test__ folder as well as the showcase found in __QuantumInformationScramblingAnalysis/ScramblingAnalysisShowcase.ipynb__. 
+#### We recommend you follow the Demos show in the __Quantum_Scrambling_Verification_test__ folder as well as the showcase found in __QuantumInformationScramblingAnalysis/ScramblingAnalysisShowcase.ipynb__. 
 
-## You can do so by clicking the above binder ribbon. 
+#### You can do so by clicking the above binder ribbon. 
 
 Thank you and enjoy the demonstrations!
 -the QISA team.
