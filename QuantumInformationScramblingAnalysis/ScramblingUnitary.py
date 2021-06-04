@@ -10,8 +10,6 @@ Programme function:
 """
 
 from math import pi
-from numpy.lib.scimath import sqrt
-from numpy.random import default_rng
 from qiskit import *
 from qiskit.circuit import gate, parameter
 import numpy as np
@@ -115,11 +113,14 @@ def ScramblingU(n, k, nearest=True, filters=True, printArray=False):
                 # If only nearest-neighbor interactions are on
                 if nearest:
                     if i < n-1:
+                        # ScramblingCircuit.iswap(i,i+1)
                         ScramblingCircuit.rxx(pi/2, i,i+1)
                     else:
+                        # ScramblingCircuit.iswap(i,i-1)
                         ScramblingCircuit.rxx(pi/2, i, i-1)
                 else:
                     # TODO: find a better way to implement chaotic SYK model - more "controlled"
+                    # ScramblingCircuit.iswap(i,i-1)
                     ScramblingCircuit.rxx(pi/2, i, i-1)
         ScramblingCircuit.barrier()
     ScrUnitary = Operator(ScramblingCircuit.to_instruction())
