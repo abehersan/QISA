@@ -18,7 +18,7 @@ In the first stage we verify that we are capable of producing evolution operator
 
 In the second stage, after having verified these dynamics, we aim to further probe the information-dynamics within the system by way of well-known correlators in our quantum circuits. 
 
-Two key figures of merit will be described; one being **scrambling unitaries** and the other **the dlock decomposition method metric**. The former is the main culprit for any information scrambling signature and the former allows us to better categorize randomly-generated scrambling unitaries. 
+Two key figures of merit will be described; one being **scrambling unitaries** and the other **the block decomposition method metric**. The former is the main culprit for any information scrambling signature and the former allows us to better categorize randomly-generated scrambling unitaries. 
 
 Thank you and enjoy the demonstrations!
 -the QISA team.
